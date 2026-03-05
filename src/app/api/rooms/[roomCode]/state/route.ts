@@ -18,7 +18,7 @@ export async function GET(
   const snapshot = await getRoomSnapshot(roomCode, playerId);
 
   if (!snapshot) {
-    return fail("Room not found.", 404);
+    return fail(`Room ${roomCode} not found in active database.`, 404);
   }
 
   return ok("Room snapshot loaded", snapshot);

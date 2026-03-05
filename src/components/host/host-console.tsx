@@ -6,7 +6,7 @@ import { Crown, LogOut, Play, QrCode, SkipForward, Users } from "lucide-react";
 import { Button } from "@/components/shared/button";
 import { Panel } from "@/components/shared/panel";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { loadLastHostSession, saveHostSession } from "@/lib/client-storage";
+import { clearHostSessions, loadLastHostSession, saveHostSession } from "@/lib/client-storage";
 import type { ActionResult } from "@/lib/types";
 import { getRemainingSeconds } from "@/lib/utils";
 import { useRoomRealtime } from "@/lib/use-room-realtime";
@@ -51,6 +51,7 @@ export function HostConsole() {
   const [origin, setOrigin] = useState("");
   const [remaining, setRemaining] = useState(0);
   const autoAdvanceKeyRef = useRef<string | null>(null);
+  const staleSessionHandledRef = useRef(false);
 
   const { snapshot, loading, error: roomError, refresh } = useRoomRealtime({
     roomCode: roomCode ?? "",
@@ -94,6 +95,25 @@ export function HostConsole() {
     snapshot?.room.status
   ]);
 
+  useEffect(() => {
+    if (!roomCode) {
+      staleSessionHandledRef.current = false;
+      return;
+    }
+
+    const combinedError = `${error ?? ""} ${roomError ?? ""}`.toLowerCase();
+    const isNotFound = combinedError.includes("room not found");
+
+    if (!isNotFound || snapshot || staleSessionHandledRef.current) return;
+
+    staleSessionHandledRef.current = true;
+    clearHostSessions();
+    setRoomCode(null);
+    setHostToken(null);
+    setError(null);
+    setFlash("Previous room not found in active Supabase project. Please create a new room.");
+  }, [error, roomCode, roomError, snapshot]);
+
   const createRoom = async () => {
     setError(null);
     setFlash("Creating room...");
@@ -105,6 +125,7 @@ export function HostConsole() {
         roomCode: data.room.room_code,
         hostToken: data.hostToken
       });
+      staleSessionHandledRef.current = false;
       setFlash(`Room ${data.room.room_code} created.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create room");
@@ -179,6 +200,7 @@ export function HostConsole() {
 
   const logout = async () => {
     await fetch("/api/host/logout", { method: "POST" });
+    clearHostSessions();
     router.refresh();
   };
 

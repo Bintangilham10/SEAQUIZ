@@ -200,6 +200,9 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
         <Panel className="space-y-3">
           <h1 className="text-2xl font-bold">Room Not Available</h1>
           <p className="text-sm text-rose-600">{error}</p>
+          <p className="text-xs font-semibold text-slate-500">
+            Make sure host already created the room in the same deployed app.
+          </p>
           <Link href="/" className="text-sm font-semibold">
             Back to home
           </Link>

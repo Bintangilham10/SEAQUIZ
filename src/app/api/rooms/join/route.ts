@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (roomError || !room) {
-    return fail("Room not found.", 404);
+    return fail(`Room ${roomCode} not found in active database.`, 404);
   }
 
   if (room.status === "finished") {

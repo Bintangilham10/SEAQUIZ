@@ -2,6 +2,7 @@
 
 const GUEST_KEY = "qrquiz_guest_id";
 const LAST_HOST_KEY = "qrquiz_host_last";
+const HOST_KEY_PREFIX = "qrquiz_host_";
 
 function generateGuestId() {
   if (typeof window !== "undefined" && typeof window.crypto?.randomUUID === "function") {
@@ -55,6 +56,19 @@ export function loadLastHostSession(): HostSession | null {
   } catch {
     return null;
   }
+}
+
+export function clearHostSessions() {
+  if (typeof window === "undefined") return;
+  const keysToDelete: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (!key) continue;
+    if (key === LAST_HOST_KEY || key.startsWith(HOST_KEY_PREFIX)) {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach((key) => window.localStorage.removeItem(key));
 }
 
 export interface PlayerSession {
