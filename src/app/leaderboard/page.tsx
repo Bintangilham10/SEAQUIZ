@@ -1,9 +1,12 @@
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
+import { unstable_noStore as noStore } from "next/cache";
 import { Panel } from "@/components/shared/panel";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function LeaderboardPage() {
+  noStore();
   const supabase = getSupabaseAdminClient();
   const { data } = await supabase
     .from("leaderboard_global")
