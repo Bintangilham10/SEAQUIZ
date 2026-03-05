@@ -6,11 +6,11 @@ export const HOST_SESSION_COOKIE_NAME = "seachan_host_session";
 export const HOST_SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 function getExpectedUsername() {
-  return process.env.HOST_LOGIN_USERNAME ?? "seachan";
+  return process.env.HOST_LOGIN_USERNAME ?? "";
 }
 
 function getExpectedPassword() {
-  return process.env.HOST_LOGIN_PASSWORD ?? "seachan321";
+  return process.env.HOST_LOGIN_PASSWORD ?? "";
 }
 
 function getHostAuthSecret() {
@@ -29,11 +29,19 @@ function signPayload(payload: string) {
 }
 
 export function validateHostCredentials(username: string, password: string) {
+  if (!isHostCredentialConfigured()) return false;
   return safeEqualText(username, getExpectedUsername()) && safeEqualText(password, getExpectedPassword());
+}
+
+export function isHostCredentialConfigured() {
+  return Boolean(getExpectedUsername() && getExpectedPassword());
 }
 
 export function createHostSessionToken() {
   const username = getExpectedUsername();
+  if (!username) {
+    throw new Error("HOST_LOGIN_USERNAME is not configured.");
+  }
   const issuedAt = Math.floor(Date.now() / 1000);
   const payload = `${username}:${issuedAt}`;
   const signature = signPayload(payload);

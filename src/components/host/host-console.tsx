@@ -214,33 +214,6 @@ export function HostConsole() {
               <p className="text-slate-500">Players Joined</p>
               <p className="mt-1 text-xl font-bold">{joinedPlayers} / 50</p>
             </div>
-            <div className="rounded-md bg-slate-100 p-3 text-sm">
-              <p className="font-semibold text-slate-700">
-                {snapshot?.room.status === "lobby" ? "Waiting Room (Live)" : "Players in Room"}
-              </p>
-              <div className="mt-2 max-h-48 overflow-auto rounded-md bg-white p-2">
-                {(snapshot?.players.length ?? 0) === 0 ? (
-                  <p className="px-2 py-2 text-xs text-slate-500">No players joined yet.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {(snapshot?.players ?? []).map((player) => (
-                      <li
-                        key={player.id}
-                        className="flex items-center justify-between rounded px-2 py-1.5 text-xs text-slate-700"
-                      >
-                        <span className="font-semibold">{player.display_name}</span>
-                        <span className="text-slate-500">
-                          {new Date(player.joined_at).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
           </Panel>
 
           <Panel className="space-y-4">

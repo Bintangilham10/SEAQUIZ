@@ -60,7 +60,9 @@ export default function HomePage() {
           >
             Quick Start Host Mode
           </Link>
-          <p className="text-center text-sm font-semibold text-slate-500">Free forever. Guest mode by default.</p>
+          <p className="text-center text-sm font-semibold text-slate-500">
+            fast setup built for live competition
+          </p>
         </Panel>
       </section>
 

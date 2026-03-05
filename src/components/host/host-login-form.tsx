@@ -8,7 +8,7 @@ import type { ActionResult } from "@/lib/types";
 
 export function HostLoginForm() {
   const router = useRouter();
-  const [username, setUsername] = useState("seachan");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +48,8 @@ export function HostLoginForm() {
             <input
               value={username}
               onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              placeholder="Enter username"
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
             />
           </div>
@@ -57,6 +59,8 @@ export function HostLoginForm() {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="Enter password"
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
             />
           </div>
@@ -65,9 +69,6 @@ export function HostLoginForm() {
           </Button>
           {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
         </form>
-        <p className="text-xs text-slate-500">
-          Temporary credential: <strong>seachan</strong> / <strong>seachan321</strong>
-        </p>
       </Panel>
     </div>
   );

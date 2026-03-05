@@ -4,12 +4,17 @@ import {
   HOST_SESSION_COOKIE_NAME,
   HOST_SESSION_TTL_SECONDS,
   createHostSessionToken,
+  isHostCredentialConfigured,
   validateHostCredentials
 } from "@/lib/server/host-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  if (!isHostCredentialConfigured()) {
+    return fail("Host login is not configured. Set HOST_LOGIN_USERNAME and HOST_LOGIN_PASSWORD.", 500);
+  }
+
   const body: { username?: string; password?: string } = await request.json().catch(() => ({}));
 
   const username = typeof body.username === "string" ? body.username.trim() : "";
