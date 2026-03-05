@@ -123,8 +123,9 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
     }
   };
 
-  const submitAnswer = async () => {
-    if (!playerId || !currentQuestion || !selectedOptionId) return;
+  const submitAnswer = async (optionOverride?: string) => {
+    const optionToSubmit = optionOverride ?? selectedOptionId;
+    if (!playerId || !currentQuestion || !optionToSubmit || hasAnsweredCurrent || remaining <= 0) return;
     setSubmitting(true);
     setLocalError(null);
     try {
@@ -134,7 +135,7 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
           roomCode: normalizedRoomCode,
           playerId,
           questionId: currentQuestion.id,
-          optionId: selectedOptionId
+          optionId: optionToSubmit
         }
       );
 
@@ -249,10 +250,11 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
                       : "border-slate-300 bg-white text-slate-800 hover:border-brand-300"
                   }`}
                   onClick={() => {
-                    if (hasAnsweredCurrent || remaining <= 0) return;
+                    if (hasAnsweredCurrent || remaining <= 0 || submitting) return;
                     setSelectedOptionId(option.id);
+                    submitAnswer(option.id).catch(() => undefined);
                   }}
-                  disabled={hasAnsweredCurrent || remaining <= 0}
+                  disabled={hasAnsweredCurrent || remaining <= 0 || submitting}
                 >
                   {option.text}
                 </button>
@@ -261,7 +263,9 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              onClick={submitAnswer}
+              onClick={() => {
+                submitAnswer().catch(() => undefined);
+              }}
               disabled={submitting || hasAnsweredCurrent || !selectedOptionId || remaining <= 0}
             >
               {hasAnsweredCurrent ? "Answer Locked" : submitting ? "Submitting..." : "Submit Answer"}

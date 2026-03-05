@@ -132,14 +132,15 @@ export function HostConsole() {
     const question = snapshot?.currentQuestion?.question;
     if (!room || !question || room.status !== "running") return;
 
-    if (remaining > 0) return;
+    const liveRemaining = getRemainingSeconds(room.question_started_at, question.time_limit_seconds);
+    if (liveRemaining > 0) return;
 
     const autoKey = `${room.current_question_index}_${room.question_started_at}`;
     if (autoAdvanceKeyRef.current === autoKey) return;
     autoAdvanceKeyRef.current = autoKey;
 
     nextQuestion().catch(() => undefined);
-  }, [remaining, snapshot?.currentQuestion?.question, snapshot?.room]);
+  }, [snapshot?.currentQuestion?.question, snapshot?.room]);
 
   const joinedPlayers = snapshot?.players.length ?? 0;
   const joinUrl = useMemo(() => {
