@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/shared/button";
 import { Panel } from "@/components/shared/panel";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -32,6 +33,7 @@ async function postJson<T>(url: string, body: Record<string, unknown>) {
 }
 
 export function HostConsole() {
+  const router = useRouter();
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [hostToken, setHostToken] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -150,10 +152,20 @@ export function HostConsole() {
     return `${origin}/r/${roomCode}`;
   }, [origin, roomCode]);
 
+  const logout = async () => {
+    await fetch("/api/host/logout", { method: "POST" });
+    router.refresh();
+  };
+
   return (
     <div className="space-y-4">
       <Panel className="space-y-3">
-        <h1 className="text-2xl font-bold">Host Console</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold">Host Console</h1>
+          <Button variant="secondary" onClick={logout}>
+            Logout
+          </Button>
+        </div>
         <p className="text-sm text-slate-600">
           Create room, share QR to participants, and control game progression in realtime.
         </p>
