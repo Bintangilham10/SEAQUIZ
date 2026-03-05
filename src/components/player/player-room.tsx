@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Crown, Medal, Users } from "lucide-react";
 import { Button } from "@/components/shared/button";
 import { Panel } from "@/components/shared/panel";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -32,6 +33,16 @@ interface JoinResponse {
     guest_id: string;
   };
 }
+
+const optionLabels = ["A", "B", "C", "D", "E", "F"];
+const avatarColors = [
+  "from-emerald-400 to-cyan-500",
+  "from-blue-500 to-indigo-500",
+  "from-fuchsia-500 to-purple-500",
+  "from-orange-400 to-amber-500",
+  "from-rose-400 to-red-500",
+  "from-sky-400 to-blue-500"
+];
 
 export function PlayerRoom({ roomCode }: { roomCode: string }) {
   const normalizedRoomCode = roomCode.toUpperCase();
@@ -74,7 +85,7 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
     };
 
     update();
-    const interval = setInterval(update, 400);
+    const interval = setInterval(update, 300);
     return () => clearInterval(interval);
   }, [
     currentQuestion?.id,
@@ -88,8 +99,8 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
     if (snapshot?.playerAnswerForCurrent) {
       setAnswerFeedback(
         snapshot.playerAnswerForCurrent.is_correct
-          ? `Correct! +${snapshot.playerAnswerForCurrent.score_awarded} points`
-          : "Wrong answer. +0 points"
+          ? `Correct! +${snapshot.playerAnswerForCurrent.score_awarded}`
+          : "Wrong answer. +0"
       );
     } else {
       setAnswerFeedback(null);
@@ -139,7 +150,7 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
       );
 
       setAnswerFeedback(
-        result.answer.is_correct ? `Correct! +${result.answer.score_awarded} points` : "Wrong answer. +0 points"
+        result.answer.is_correct ? `Correct! +${result.answer.score_awarded}` : "Wrong answer. +0"
       );
       await refresh();
     } catch (err) {
@@ -160,93 +171,166 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
     };
   }, [playerId, snapshot]);
 
+  const timerProgress = useMemo(() => {
+    if (!currentQuestion) return 0;
+    return Math.max(0, Math.min(100, Math.round((remaining / currentQuestion.time_limit_seconds) * 100)));
+  }, [currentQuestion, remaining]);
+
+  const questionProgress = useMemo(() => {
+    if (!snapshot?.totalQuestions) return 0;
+    return Math.max(
+      0,
+      Math.min(100, Math.round(((snapshot.room.current_question_index + 1) / snapshot.totalQuestions) * 100))
+    );
+  }, [snapshot?.room.current_question_index, snapshot?.totalQuestions]);
+
   if (loading && !snapshot) {
     return (
-      <Panel>
-        <p className="text-sm text-slate-600">Loading room {normalizedRoomCode}...</p>
-      </Panel>
+      <div className="mx-auto max-w-xl">
+        <Panel>
+          <p className="text-sm text-slate-600">Loading room {normalizedRoomCode}...</p>
+        </Panel>
+      </div>
     );
   }
 
   if (error && !snapshot) {
     return (
-      <Panel className="space-y-3">
-        <h1 className="text-2xl font-bold">Room Not Available</h1>
-        <p className="text-sm text-rose-600">{error}</p>
-        <Link href="/" className="text-sm font-semibold">
-          Back to home
-        </Link>
-      </Panel>
+      <div className="mx-auto max-w-xl">
+        <Panel className="space-y-3">
+          <h1 className="text-2xl font-bold">Room Not Available</h1>
+          <p className="text-sm text-rose-600">{error}</p>
+          <Link href="/" className="text-sm font-semibold">
+            Back to home
+          </Link>
+        </Panel>
+      </div>
     );
   }
 
   if (!playerId) {
     return (
-      <Panel className="space-y-4">
-        <h1 className="text-2xl font-bold">Join Room {normalizedRoomCode}</h1>
-        <p className="text-sm text-slate-600">Enter your display name to join as guest.</p>
-        <form onSubmit={joinRoom} className="space-y-3">
-          <input
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            maxLength={24}
-            placeholder="Your nickname"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          />
-          <Button type="submit" disabled={joining}>
-            {joining ? "Joining..." : "Join Room"}
-          </Button>
-        </form>
-        {(localError || error) && <p className="text-sm text-rose-600">{localError || error}</p>}
-      </Panel>
+      <div className="mx-auto max-w-xl">
+        <Panel className="space-y-5 bg-white/92">
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Join Room</p>
+            <h1 className="font-display mt-2 text-3xl font-extrabold text-slate-900">{normalizedRoomCode}</h1>
+          </div>
+          <form onSubmit={joinRoom} className="space-y-3">
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              maxLength={24}
+              placeholder="Your nickname"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+            <Button type="submit" disabled={joining} className="w-full py-3 text-lg">
+              {joining ? "Joining..." : "Join Room"}
+            </Button>
+          </form>
+          {(localError || error) && <p className="text-sm text-rose-600">{localError || error}</p>}
+        </Panel>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <Panel className="space-y-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold">Room {normalizedRoomCode}</h1>
+    <div className="mx-auto max-w-xl space-y-4">
+      <Panel className="space-y-2 bg-white/94">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-2xl font-extrabold text-slate-900">Seachan Quiz</h1>
           {snapshot?.room && <StatusBadge status={snapshot.room.status} />}
         </div>
-        <p className="text-sm text-slate-600">
-          Player: <strong>{displayName}</strong>
+        <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-500 px-4 py-3 text-center text-white">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-100">Room</p>
+          <p className="text-3xl font-extrabold tracking-[0.2em]">{normalizedRoomCode}</p>
+        </div>
+        <p className="text-sm font-semibold text-slate-700">
+          You are <span className="font-extrabold">{displayName}</span>
         </p>
-        {myStanding && (
-          <p className="text-sm text-slate-700">
-            Current Rank: <strong>#{myStanding.rank}</strong> | Score: <strong>{myStanding.score}</strong>
-          </p>
-        )}
       </Panel>
 
       {snapshot?.room.status === "lobby" && (
-        <Panel className="space-y-2">
-          <h2 className="text-xl font-semibold">Waiting Room</h2>
-          <p className="text-sm text-slate-600">Host has not started yet. Stay on this page.</p>
-          <p className="text-sm text-slate-600">Players joined: {snapshot.players.length}</p>
+        <Panel className="space-y-4 bg-white/95">
+          <div className="text-center">
+            <p className="font-display text-3xl font-extrabold uppercase tracking-wide text-slate-900">
+              Waiting for Host...
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-600">
+              {snapshot.players.length} member{snapshot.players.length === 1 ? "" : "s"} in room
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {snapshot.players.slice(0, 12).map((player, index) => (
+              <div key={player.id} className="space-y-1 text-center">
+                <div
+                  className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br text-lg font-extrabold text-white sm:h-14 sm:w-14 ${avatarColors[index % avatarColors.length]}`}
+                >
+                  {player.display_name.slice(0, 1).toUpperCase()}
+                </div>
+                <p className="truncate text-xs font-bold text-slate-700">{player.display_name}</p>
+              </div>
+            ))}
+          </div>
+
+          <Button className="w-full py-3 text-lg" disabled>
+            I&apos;M READY!
+          </Button>
         </Panel>
       )}
 
       {snapshot?.room.status === "running" && currentQuestion && (
-        <Panel className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-              Question {snapshot.room.current_question_index + 1} / {snapshot.totalQuestions}
-            </p>
-            <p className="text-sm font-semibold text-brand-800">Time Left: {remaining}s</p>
+        <Panel className="space-y-4 bg-white/95">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 space-y-1">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-slate-700">
+                SOAL {snapshot.room.current_question_index + 1}/{snapshot.totalQuestions}
+              </p>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-lime-400 to-lime-500 transition-all duration-300"
+                  style={{ width: `${questionProgress}%` }}
+                />
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Score</p>
+              <p className="text-3xl font-extrabold text-slate-900">{myStanding?.score ?? 0}</p>
+            </div>
           </div>
-          <h2 className="text-xl font-semibold">{currentQuestion.text}</h2>
-          <div className="grid gap-2">
-            {snapshot.currentQuestion?.options.map((option) => {
+
+          <div className="relative mx-auto h-52 w-52 sm:h-56 sm:w-56">
+            <div
+              className="absolute inset-0 rounded-full shadow-[0_0_35px_rgba(132,204,22,0.35)]"
+              style={{
+                background: `conic-gradient(#a3e635 ${timerProgress}%, #e2e8f0 ${timerProgress}% 100%)`
+              }}
+            />
+            <div className="absolute inset-[12px] rounded-full bg-white" />
+            <div className="absolute inset-0 flex items-center justify-center text-center">
+              <div>
+                <p className="text-7xl font-extrabold leading-none text-slate-900">{remaining}</p>
+                <p className="text-sm font-extrabold uppercase tracking-wide text-slate-500">seconds</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xl font-bold leading-snug text-slate-900">{currentQuestion.text}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {snapshot.currentQuestion?.options.map((option, index) => {
               const selected = option.id === selectedOptionId;
               return (
                 <button
                   key={option.id}
                   type="button"
-                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                  className={`rounded-2xl border bg-white px-3 py-4 text-left transition ${
                     selected
-                      ? "border-brand-500 bg-brand-50 text-brand-800"
-                      : "border-slate-300 bg-white text-slate-800 hover:border-brand-300"
+                      ? "border-indigo-500 bg-indigo-50 shadow-[0_8px_25px_-20px_rgba(79,70,229,0.9)]"
+                      : "border-slate-200 hover:border-indigo-300"
                   }`}
                   onClick={() => {
                     if (hasAnsweredCurrent || remaining <= 0 || submitting) return;
@@ -254,68 +338,107 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
                   }}
                   disabled={hasAnsweredCurrent || remaining <= 0 || submitting}
                 >
-                  {option.text}
+                  <p className="text-3xl font-extrabold text-slate-900">{optionLabels[index] ?? "?"}</p>
+                  <p className="mt-1 text-sm font-bold uppercase text-slate-700">{option.text}</p>
                 </button>
               );
             })}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+
+          <div className="space-y-2">
             <Button
               onClick={() => {
                 submitAnswer().catch(() => undefined);
               }}
               disabled={submitting || hasAnsweredCurrent || !selectedOptionId || remaining <= 0}
+              className="w-full py-3 text-lg"
             >
-              {hasAnsweredCurrent ? "Answer Locked" : submitting ? "Submitting..." : "Submit Answer"}
+              {hasAnsweredCurrent ? "Jawaban Terkunci!" : submitting ? "Submitting..." : "Submit Answer"}
             </Button>
-            {answerFeedback && <p className="text-sm font-semibold text-slate-700">{answerFeedback}</p>}
+            {answerFeedback && (
+              <p className="rounded-xl bg-slate-900 px-3 py-2 text-center text-sm font-bold text-white">
+                {answerFeedback}
+              </p>
+            )}
           </div>
         </Panel>
       )}
 
       {snapshot?.room.status === "finished" && (
-        <Panel className="space-y-3">
-          <h2 className="text-xl font-semibold">Game Finished</h2>
-          {myStanding && (
-            <p className="text-sm text-slate-700">
-              Final Rank: <strong>#{myStanding.rank}</strong> with <strong>{myStanding.score}</strong> points.
-            </p>
-          )}
-          <div className="overflow-hidden rounded-lg border border-slate-200">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-left text-slate-600">
-                <tr>
-                  <th className="px-3 py-2">#</th>
-                  <th className="px-3 py-2">Player</th>
-                  <th className="px-3 py-2 text-right">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {snapshot.players.map((player, index) => (
-                  <tr key={player.id} className={player.id === playerId ? "bg-brand-50" : "border-t border-slate-100"}>
-                    <td className="px-3 py-2 font-semibold">{index + 1}</td>
-                    <td className="px-3 py-2">{player.display_name}</td>
-                    <td className="px-3 py-2 text-right font-semibold">{player.total_score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <Panel className="space-y-4 bg-white/95">
+          <div className="text-center">
+            <p className="font-display text-3xl font-extrabold text-slate-900">Hasil Quiz</p>
+            {myStanding && (
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                Final Rank <strong>#{myStanding.rank}</strong> with <strong>{myStanding.score}</strong> points.
+              </p>
+            )}
           </div>
-          <div className="flex gap-3">
-            <Link href="/" className="inline-flex rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
+
+          <div className="space-y-2">
+            {snapshot.players.map((player, index) => {
+              const isMe = player.id === playerId;
+              return (
+                <div
+                  key={player.id}
+                  className={`flex items-center justify-between rounded-2xl border px-3 py-2 ${
+                    isMe
+                      ? "border-indigo-300 bg-gradient-to-r from-indigo-500 to-violet-500 text-white"
+                      : "border-slate-200 bg-white text-slate-900"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isMe ? "bg-white/20" : "bg-slate-100"}`}>
+                      {index === 0 ? (
+                        <Crown size={16} className={isMe ? "text-white" : "text-amber-500"} />
+                      ) : index === 1 ? (
+                        <Medal size={16} className={isMe ? "text-white" : "text-slate-400"} />
+                      ) : (
+                        <span className="text-sm font-extrabold">{index + 1}</span>
+                      )}
+                    </div>
+                    <p className="font-extrabold">{isMe ? `You (${player.display_name})` : player.display_name}</p>
+                  </div>
+                  <p className="text-lg font-extrabold">{player.total_score}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-500 px-4 py-3 text-sm font-extrabold text-white"
+            >
               Play Again
             </Link>
             <Link
               href="/leaderboard"
-              className="inline-flex rounded-md bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-900"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white"
             >
-              Global Leaderboard
+              Global Board
             </Link>
           </div>
         </Panel>
       )}
 
-      {(localError || error) && <p className="text-sm text-rose-600">{localError || error}</p>}
+      {(localError || error) && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+          {localError || error}
+        </div>
+      )}
+
+      {myStanding && snapshot?.room.status !== "finished" && (
+        <div className="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-2">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+            <Users size={16} />
+            <span>
+              Rank #{myStanding.rank} of {snapshot?.players.length ?? 0}
+            </span>
+          </div>
+          <p className="text-sm font-extrabold text-slate-900">{myStanding.score} pts</p>
+        </div>
+      )}
     </div>
   );
 }
