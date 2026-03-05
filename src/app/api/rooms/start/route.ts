@@ -2,8 +2,13 @@ import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/server/http";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import { hashHostToken } from "@/lib/server/security";
+import { isHostSessionAuthorized } from "@/lib/server/host-auth";
 
 export async function POST(request: NextRequest) {
+  if (!isHostSessionAuthorized(request)) {
+    return fail("Unauthorized host session. Please login first.", 401);
+  }
+
   const supabase = getSupabaseAdminClient();
   const body: { roomCode?: string; hostToken?: string } = await request.json().catch(() => ({}));
 

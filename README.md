@@ -44,6 +44,10 @@ Targeted for zero-budget deployment on:
     |   |-- api
     |   |   |-- answers
     |   |   |   `-- submit/route.ts
+    |   |   |-- host
+    |   |   |   |-- login/route.ts
+    |   |   |   |-- logout/route.ts
+    |   |   |   `-- session/route.ts
     |   |   |-- leaderboard/route.ts
     |   |   `-- rooms
     |   |       |-- create/route.ts
@@ -60,6 +64,7 @@ Targeted for zero-budget deployment on:
     |   `-- page.tsx
     |-- components
     |   |-- host/host-console.tsx
+    |   |-- host/host-login-form.tsx
     |   |-- player/player-room.tsx
     |   `-- shared
     |       |-- button.tsx
@@ -69,11 +74,14 @@ Targeted for zero-budget deployment on:
     `-- lib
         |-- client-storage.ts
         |-- constants.ts
-        |-- env.ts
+        |-- env
+        |   |-- public.ts
+        |   `-- server.ts
         |-- types.ts
         |-- use-room-realtime.ts
         |-- utils.ts
         |-- server
+        |   |-- host-auth.ts
         |   |-- http.ts
         |   `-- room-snapshot.ts
         `-- supabase
@@ -111,6 +119,7 @@ Server validation happens in `/api/answers/submit` using:
 
 ## Security Model (Showcase-level)
 
+- Host login gate (cookie session) for `/host` and host actions.
 - Host auth: random `host_token` (stored hashed with SHA-256 in DB), raw token only in host localStorage.
 - Player identity: `guest_id` generated on client and stored in localStorage.
 - Sensitive actions (`start`, `next`, `submit answer`) go through Next.js route handlers (server gate).
@@ -140,7 +149,12 @@ Copy `.env.example` to `.env.local` and fill values:
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+HOST_LOGIN_USERNAME=seachan
+HOST_LOGIN_PASSWORD=seachan321
+HOST_AUTH_SECRET=...
 ```
+
+Default host credentials (if env not set): `seachan / seachan321`.
 
 ## Run Locally
 
@@ -163,6 +177,9 @@ Open:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `HOST_LOGIN_USERNAME` (optional)
+   - `HOST_LOGIN_PASSWORD` (optional)
+   - `HOST_AUTH_SECRET` (recommended)
 4. Deploy.
 5. Verify host QR uses deployed domain for player joins.
 

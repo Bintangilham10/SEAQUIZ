@@ -3,8 +3,13 @@ import { generateRoomCode } from "@/lib/utils";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import { fail, ok } from "@/lib/server/http";
 import { generateHostToken, hashHostToken } from "@/lib/server/security";
+import { isHostSessionAuthorized } from "@/lib/server/host-auth";
 
 export async function POST(request: NextRequest) {
+  if (!isHostSessionAuthorized(request)) {
+    return fail("Unauthorized host session. Please login first.", 401);
+  }
+
   const supabase = getSupabaseAdminClient();
 
   const body: { quizSetId?: string } = await request.json().catch(() => ({}));
