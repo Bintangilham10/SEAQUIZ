@@ -63,7 +63,10 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (playerError || !player) {
-    return fail("Failed to join room.", 500);
+    const reason = [playerError?.message, playerError?.details, playerError?.hint]
+      .filter((value) => Boolean(value))
+      .join(" | ");
+    return fail(`Failed to join room. ${reason || "Unknown database error."}`, 500);
   }
 
   return ok("Joined room", { player });
