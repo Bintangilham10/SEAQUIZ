@@ -74,6 +74,7 @@ export interface RoomSnapshot {
   totalQuestions: number;
   players: Array<Pick<RoomPlayer, "id" | "display_name" | "guest_id" | "joined_at" | "total_score">>;
   currentQuestion: CurrentQuestionPayload | null;
+  currentQuestionAnswerCount: number;
   playerAnswerForCurrent: Pick<RoomAnswer, "id" | "option_id" | "is_correct" | "score_awarded"> | null;
 }
 

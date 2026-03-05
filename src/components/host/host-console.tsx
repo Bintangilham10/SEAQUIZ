@@ -44,6 +44,7 @@ export function HostConsole() {
     roomCode: roomCode ?? "",
     playerId: null
   });
+  const joinedPlayers = snapshot?.players.length ?? 0;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -133,16 +134,17 @@ export function HostConsole() {
     if (!room || !question || room.status !== "running") return;
 
     const liveRemaining = getRemainingSeconds(room.question_started_at, question.time_limit_seconds);
-    if (liveRemaining > 0) return;
+    const answeredAllPlayers =
+      joinedPlayers > 0 && (snapshot?.currentQuestionAnswerCount ?? 0) >= joinedPlayers;
+    if (liveRemaining > 0 && !answeredAllPlayers) return;
 
     const autoKey = `${room.current_question_index}_${room.question_started_at}`;
     if (autoAdvanceKeyRef.current === autoKey) return;
     autoAdvanceKeyRef.current = autoKey;
 
     nextQuestion().catch(() => undefined);
-  }, [snapshot?.currentQuestion?.question, snapshot?.room]);
+  }, [joinedPlayers, snapshot?.currentQuestion?.question, snapshot?.currentQuestionAnswerCount, snapshot?.room]);
 
-  const joinedPlayers = snapshot?.players.length ?? 0;
   const joinUrl = useMemo(() => {
     if (!roomCode || !origin) return "";
     return `${origin}/r/${roomCode}`;
@@ -238,6 +240,9 @@ export function HostConsole() {
                   </p>
                   <p className="text-sm font-semibold text-brand-800">Timer: {remaining}s</p>
                 </div>
+                <p className="text-xs font-semibold text-brand-700">
+                  Answers: {snapshot.currentQuestionAnswerCount} / {joinedPlayers}
+                </p>
                 <p className="font-semibold text-slate-900">{snapshot.currentQuestion.question.text}</p>
                 <ol className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
                   {snapshot.currentQuestion.options.map((option) => (

@@ -123,9 +123,8 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
     }
   };
 
-  const submitAnswer = async (optionOverride?: string) => {
-    const optionToSubmit = optionOverride ?? selectedOptionId;
-    if (!playerId || !currentQuestion || !optionToSubmit || hasAnsweredCurrent || remaining <= 0) return;
+  const submitAnswer = async () => {
+    if (!playerId || !currentQuestion || !selectedOptionId || hasAnsweredCurrent || remaining <= 0) return;
     setSubmitting(true);
     setLocalError(null);
     try {
@@ -135,7 +134,7 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
           roomCode: normalizedRoomCode,
           playerId,
           questionId: currentQuestion.id,
-          optionId: optionToSubmit
+          optionId: selectedOptionId
         }
       );
 
@@ -252,7 +251,6 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
                   onClick={() => {
                     if (hasAnsweredCurrent || remaining <= 0 || submitting) return;
                     setSelectedOptionId(option.id);
-                    submitAnswer(option.id).catch(() => undefined);
                   }}
                   disabled={hasAnsweredCurrent || remaining <= 0 || submitting}
                 >

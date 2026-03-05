@@ -53,6 +53,14 @@ export async function getRoomSnapshot(
       : Promise.resolve({ data: null })
   ]);
 
+  const answerCountRes = question
+    ? await supabase
+        .from("room_answers")
+        .select("*", { count: "exact", head: true })
+        .eq("room_id", room.id)
+        .eq("question_id", question.id)
+    : { count: 0 };
+
   return {
     room,
     quizTitle: quizSet?.title ?? "Untitled Quiz",
@@ -64,6 +72,7 @@ export async function getRoomSnapshot(
           options: optionsRes.data ?? []
         }
       : null,
+    currentQuestionAnswerCount: answerCountRes.count ?? 0,
     playerAnswerForCurrent: answerRes.data ?? null
   };
 }
