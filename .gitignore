@@ -7,3 +7,5 @@ out
 coverage
 *.log
 supabase/.temp
+supabase/migrations/
+supabase/seed.sql
