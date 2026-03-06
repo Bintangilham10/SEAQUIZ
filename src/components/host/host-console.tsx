@@ -55,12 +55,15 @@ export function HostConsole() {
 
   const { snapshot, loading, error: roomError, refresh } = useRoomRealtime({
     roomCode: roomCode ?? "",
-    playerId: null
+    playerId: null,
+    viewer: "host"
   });
 
   const joinedPlayers = snapshot?.playerCount ?? snapshot?.players.length ?? 0;
   const currentQuestion = snapshot?.currentQuestion?.question ?? null;
   const currentStatus = snapshot?.room.status ?? "lobby";
+  const visiblePreviewPlayers = snapshot?.players.slice(0, 12) ?? [];
+  const visibleRankingPlayers = snapshot?.players.slice(0, 12) ?? [];
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -351,17 +354,24 @@ export function HostConsole() {
               {(snapshot?.playerCount ?? snapshot?.players.length ?? 0) === 0 ? (
                 <p className="text-sm font-semibold text-slate-500">No members in room yet.</p>
               ) : (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-4">
-                  {(snapshot?.players ?? []).slice(0, 16).map((player, index) => (
-                    <div key={player.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center">
-                      <div
-                        className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-sm font-extrabold text-white ${avatarColors[index % avatarColors.length]}`}
-                      >
-                        {player.display_name.slice(0, 1).toUpperCase()}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-4">
+                    {visiblePreviewPlayers.map((player, index) => (
+                      <div key={player.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center">
+                        <div
+                          className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-sm font-extrabold text-white ${avatarColors[index % avatarColors.length]}`}
+                        >
+                          {player.display_name.slice(0, 1).toUpperCase()}
+                        </div>
+                        <p className="mt-1 truncate text-[11px] font-bold text-slate-700 sm:text-xs">{player.display_name}</p>
                       </div>
-                      <p className="mt-1 truncate text-[11px] font-bold text-slate-700 sm:text-xs">{player.display_name}</p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  {joinedPlayers > visiblePreviewPlayers.length && (
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      +{joinedPlayers - visiblePreviewPlayers.length} more members connected
+                    </p>
+                  )}
                 </div>
               )}
             </Panel>
@@ -374,7 +384,7 @@ export function HostConsole() {
                 <p className="text-sm font-semibold text-slate-500">No players joined yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {(snapshot?.players ?? []).map((player, index) => (
+                  {visibleRankingPlayers.map((player, index) => (
                     <div
                       key={player.id}
                       className={`flex items-center justify-between rounded-2xl border px-3 py-2 ${
@@ -396,6 +406,11 @@ export function HostConsole() {
                       <p className="text-base font-extrabold text-slate-900 sm:text-lg">{player.total_score}</p>
                     </div>
                   ))}
+                  {joinedPlayers > visibleRankingPlayers.length && (
+                    <p className="pt-1 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Showing top {visibleRankingPlayers.length} of {joinedPlayers} members
+                    </p>
+                  )}
                 </div>
               )}
             </Panel>

@@ -55,6 +55,12 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
   const [remaining, setRemaining] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [answerFeedback, setAnswerFeedback] = useState<string | null>(null);
+  const [optimisticAnswer, setOptimisticAnswer] = useState<{
+    questionId: string;
+    optionId: string;
+    isCorrect: boolean;
+    scoreAwarded: number;
+  } | null>(null);
 
   useEffect(() => {
     const id = getOrCreateGuestId();
@@ -68,11 +74,28 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
 
   const { snapshot, loading, error, refresh } = useRoomRealtime({
     roomCode: normalizedRoomCode,
-    playerId
+    playerId,
+    viewer: "player"
   });
 
   const currentQuestion = snapshot?.currentQuestion?.question ?? null;
-  const hasAnsweredCurrent = Boolean(snapshot?.playerAnswerForCurrent);
+  const effectiveAnswer = useMemo(() => {
+    if (snapshot?.playerAnswerForCurrent) {
+      return snapshot.playerAnswerForCurrent;
+    }
+
+    if (!optimisticAnswer || optimisticAnswer.questionId !== currentQuestion?.id) {
+      return null;
+    }
+
+    return {
+      id: "optimistic",
+      option_id: optimisticAnswer.optionId,
+      is_correct: optimisticAnswer.isCorrect,
+      score_awarded: optimisticAnswer.scoreAwarded
+    };
+  }, [currentQuestion?.id, optimisticAnswer, snapshot?.playerAnswerForCurrent]);
+  const hasAnsweredCurrent = Boolean(effectiveAnswer);
 
   useEffect(() => {
     if (!snapshot?.room || !currentQuestion || snapshot.room.status !== "running") {
@@ -95,17 +118,28 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
   ]);
 
   useEffect(() => {
-    setSelectedOptionId(snapshot?.playerAnswerForCurrent?.option_id ?? null);
+    if (!currentQuestion) {
+      setOptimisticAnswer(null);
+      setSelectedOptionId(null);
+      setAnswerFeedback(null);
+      return;
+    }
+
     if (snapshot?.playerAnswerForCurrent) {
+      setOptimisticAnswer(null);
+    } else if (optimisticAnswer && optimisticAnswer.questionId !== currentQuestion.id) {
+      setOptimisticAnswer(null);
+    }
+
+    setSelectedOptionId(effectiveAnswer?.option_id ?? null);
+    if (effectiveAnswer) {
       setAnswerFeedback(
-        snapshot.playerAnswerForCurrent.is_correct
-          ? `Correct! +${snapshot.playerAnswerForCurrent.score_awarded}`
-          : "Wrong answer. +0"
+        effectiveAnswer.is_correct ? `Correct! +${effectiveAnswer.score_awarded}` : "Wrong answer. +0"
       );
     } else {
       setAnswerFeedback(null);
     }
-  }, [snapshot?.playerAnswerForCurrent, currentQuestion?.id]);
+  }, [currentQuestion, effectiveAnswer, optimisticAnswer, snapshot?.playerAnswerForCurrent]);
 
   const joinRoom = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -149,10 +183,15 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
         }
       );
 
+      setOptimisticAnswer({
+        questionId: currentQuestion.id,
+        optionId: selectedOptionId,
+        isCorrect: result.answer.is_correct,
+        scoreAwarded: result.answer.score_awarded
+      });
       setAnswerFeedback(
         result.answer.is_correct ? `Correct! +${result.answer.score_awarded}` : "Wrong answer. +0"
       );
-      await refresh();
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Failed to submit answer");
     } finally {
@@ -162,14 +201,39 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
 
   const myStanding = useMemo(() => {
     if (!snapshot || !playerId) return null;
+    if (snapshot.selfStanding) {
+      return {
+        rank: snapshot.selfStanding.rank,
+        score: snapshot.selfStanding.score,
+        totalPlayers: snapshot.selfStanding.total_players
+      };
+    }
+
     const index = snapshot.players.findIndex((item) => item.id === playerId);
     if (index === -1) return null;
     const me = snapshot.players[index];
     return {
       rank: index + 1,
-      score: me.total_score
+      score: me.total_score,
+      totalPlayers: snapshot.playerCount ?? snapshot.players.length
     };
   }, [playerId, snapshot]);
+
+  const finalLeaders = useMemo(() => {
+    if (!snapshot) return [];
+    return snapshot.players.slice(0, 10);
+  }, [snapshot]);
+
+  const meOutsideTopList = useMemo(() => {
+    if (!snapshot || !playerId || !myStanding) return null;
+    if (finalLeaders.some((player) => player.id === playerId)) return null;
+    const fallbackPlayer = snapshot.players.find((player) => player.id === playerId);
+    return {
+      id: playerId,
+      display_name: displayName,
+      total_score: myStanding.score ?? fallbackPlayer?.total_score ?? 0
+    };
+  }, [displayName, finalLeaders, myStanding, playerId, snapshot]);
 
   const timerProgress = useMemo(() => {
     if (!currentQuestion) return 0;
@@ -380,7 +444,7 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
           </div>
 
           <div className="space-y-2">
-            {snapshot.players.map((player, index) => {
+            {finalLeaders.map((player, index) => {
               const isMe = player.id === playerId;
               return (
                 <div
@@ -407,6 +471,19 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
                 </div>
               );
             })}
+            {meOutsideTopList && myStanding && (
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-slate-900">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+                      <span className="text-sm font-extrabold">#{myStanding.rank}</span>
+                    </div>
+                    <p className="font-extrabold">You ({meOutsideTopList.display_name})</p>
+                  </div>
+                  <p className="text-lg font-extrabold">{meOutsideTopList.total_score}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -437,7 +514,7 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
           <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
             <Users size={16} />
               <span>
-              Rank #{myStanding.rank} of {snapshot?.playerCount ?? snapshot?.players.length ?? 0}
+              Rank #{myStanding.rank} of {myStanding.totalPlayers}
             </span>
           </div>
           <p className="text-sm font-extrabold text-slate-900">{myStanding.score} pts</p>

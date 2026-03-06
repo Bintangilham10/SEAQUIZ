@@ -65,6 +65,12 @@ export interface CurrentQuestionPayload {
   options: Array<Pick<Option, "id" | "question_id" | "text">>;
 }
 
+export interface StandingSummary {
+  rank: number;
+  score: number;
+  total_players: number;
+}
+
 export interface RoomSnapshot {
   room: Pick<
     Room,
@@ -77,6 +83,7 @@ export interface RoomSnapshot {
   currentQuestion: CurrentQuestionPayload | null;
   currentQuestionAnswerCount: number;
   playerAnswerForCurrent: Pick<RoomAnswer, "id" | "option_id" | "is_correct" | "score_awarded"> | null;
+  selfStanding: StandingSummary | null;
 }
 
 export interface ActionResult<T = null> {

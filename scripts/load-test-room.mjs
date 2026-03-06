@@ -76,6 +76,7 @@ async function runStatePollers({
   baseUrl,
   roomCode,
   playerIds,
+  includeHostPoller = true,
   pollerCount,
   durationMs,
   intervalMs
@@ -91,8 +92,11 @@ async function runStatePollers({
   await Promise.all(
     Array.from({ length: pollerCount }, async (_, index) => {
       while (Date.now() < deadline) {
-        const playerId = playerIds.length ? playerIds[index % playerIds.length] : null;
-        const query = playerId ? `?playerId=${encodeURIComponent(playerId)}` : "";
+        const useHostView = includeHostPoller && index === 0;
+        const playerId = useHostView ? null : playerIds.length ? playerIds[index % playerIds.length] : null;
+        const query = playerId
+          ? `?viewer=player&playerId=${encodeURIComponent(playerId)}`
+          : "?viewer=host";
         try {
           const result = await requestJson(baseUrl, `/api/rooms/${roomCode}/state${query}`, {
             headers: {
@@ -303,7 +307,7 @@ async function main() {
   console.log(`Join duration  : ${joinDurationMs} ms`);
   console.log(summarizeDurations("Join latency   ", joinResults.map((result) => result.durationMs)));
 
-  const stateAfterJoin = await requestJson(baseUrl, `/api/rooms/${roomCode}/state`, {
+  const stateAfterJoin = await requestJson(baseUrl, `/api/rooms/${roomCode}/state?viewer=host`, {
     headers: {
       "cache-control": "no-store"
     }
@@ -334,7 +338,7 @@ async function main() {
   }
   console.log("Game started   : OK");
 
-  const stateAfterStart = await requestJson(baseUrl, `/api/rooms/${roomCode}/state`, {
+  const stateAfterStart = await requestJson(baseUrl, `/api/rooms/${roomCode}/state?viewer=host`, {
     headers: {
       "cache-control": "no-store"
     }
@@ -358,6 +362,7 @@ async function main() {
       baseUrl,
       roomCode,
       playerIds: joinedPlayers.map((player) => player.id),
+      includeHostPoller: true,
       pollerCount,
       durationMs: pollSeconds * 1000,
       intervalMs: pollIntervalMs
@@ -407,7 +412,7 @@ async function main() {
   console.log(`Answer duration: ${answerDurationMs} ms`);
   console.log(summarizeDurations("Answer latency ", answerResults.map((result) => result.durationMs)));
 
-  const finalState = await requestJson(baseUrl, `/api/rooms/${roomCode}/state`, {
+  const finalState = await requestJson(baseUrl, `/api/rooms/${roomCode}/state?viewer=host`, {
     headers: {
       "cache-control": "no-store"
     }

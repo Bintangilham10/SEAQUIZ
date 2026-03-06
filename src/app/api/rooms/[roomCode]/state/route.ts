@@ -15,7 +15,13 @@ export async function GET(
 ) {
   const roomCode = context.params.roomCode.toUpperCase();
   const playerId = request.nextUrl.searchParams.get("playerId");
-  const snapshot = await getRoomSnapshot(roomCode, playerId);
+  const viewerParam = request.nextUrl.searchParams.get("viewer");
+  const viewer = viewerParam === "host" ? "host" : viewerParam === "player" ? "player" : playerId ? "player" : "host";
+  const snapshot = await getRoomSnapshot(roomCode, {
+    playerId,
+    playersLimit: viewer === "host" ? 50 : 12,
+    includeAnswerCount: viewer === "host"
+  });
 
   if (!snapshot) {
     return fail(`Room ${roomCode} not found in active database.`, 404);
