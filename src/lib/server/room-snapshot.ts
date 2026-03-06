@@ -17,22 +17,24 @@ export async function getRoomSnapshot(
     return null;
   }
 
-  const [{ data: quizSet }, { data: questions }, { data: players }] = await Promise.all([
+  const [{ data: quizSet }, { data: questionRows }, { data: playerCountRows }, { data: players }, { data: question }] = await Promise.all([
     supabase.from("quiz_sets").select("title").eq("id", room.quiz_set_id).maybeSingle(),
-    supabase
-      .from("questions")
-      .select("id, text, time_limit_seconds, order_index")
-      .eq("quiz_set_id", room.quiz_set_id)
-      .order("order_index", { ascending: true }),
+    supabase.from("questions").select("id").eq("quiz_set_id", room.quiz_set_id),
+    supabase.from("room_players").select("id").eq("room_id", room.id),
     supabase
       .from("room_players")
       .select("id, display_name, guest_id, joined_at, total_score")
       .eq("room_id", room.id)
       .order("total_score", { ascending: false })
       .order("joined_at", { ascending: true })
+      .limit(50),
+    supabase
+      .from("questions")
+      .select("id, text, time_limit_seconds, order_index")
+      .eq("quiz_set_id", room.quiz_set_id)
+      .eq("order_index", room.current_question_index)
+      .maybeSingle()
   ]);
-
-  const question = questions?.[room.current_question_index] ?? null;
 
   const [optionsRes, answerRes] = await Promise.all([
     question
@@ -64,7 +66,8 @@ export async function getRoomSnapshot(
   return {
     room,
     quizTitle: quizSet?.title ?? "Untitled Quiz",
-    totalQuestions: questions?.length ?? 0,
+    totalQuestions: questionRows?.length ?? 0,
+    playerCount: Math.max(playerCountRows?.length ?? 0, players?.length ?? 0),
     players: players ?? [],
     currentQuestion: question
       ? {

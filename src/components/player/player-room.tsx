@@ -260,7 +260,8 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
               Waiting for Host...
             </p>
             <p className="mt-1 text-sm font-semibold text-slate-600">
-              {snapshot.players.length} member{snapshot.players.length === 1 ? "" : "s"} in room
+              {(snapshot.playerCount ?? snapshot.players.length)} member
+              {(snapshot.playerCount ?? snapshot.players.length) === 1 ? "" : "s"} in room
             </p>
           </div>
 
@@ -435,8 +436,8 @@ export function PlayerRoom({ roomCode }: { roomCode: string }) {
         <div className="sticky bottom-2 z-20 flex items-center justify-between rounded-2xl border border-white/80 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
           <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
             <Users size={16} />
-            <span>
-              Rank #{myStanding.rank} of {snapshot?.players.length ?? 0}
+              <span>
+              Rank #{myStanding.rank} of {snapshot?.playerCount ?? snapshot?.players.length ?? 0}
             </span>
           </div>
           <p className="text-sm font-extrabold text-slate-900">{myStanding.score} pts</p>

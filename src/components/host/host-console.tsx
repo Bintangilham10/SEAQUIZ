@@ -58,7 +58,7 @@ export function HostConsole() {
     playerId: null
   });
 
-  const joinedPlayers = snapshot?.players.length ?? 0;
+  const joinedPlayers = snapshot?.playerCount ?? snapshot?.players.length ?? 0;
   const currentQuestion = snapshot?.currentQuestion?.question ?? null;
   const currentStatus = snapshot?.room.status ?? "lobby";
 
@@ -348,7 +348,7 @@ export function HostConsole() {
                 <Users size={18} />
                 Connected Members
               </h3>
-              {(snapshot?.players.length ?? 0) === 0 ? (
+              {(snapshot?.playerCount ?? snapshot?.players.length ?? 0) === 0 ? (
                 <p className="text-sm font-semibold text-slate-500">No members in room yet.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-4">
@@ -370,7 +370,7 @@ export function HostConsole() {
               <h3 className="text-lg font-extrabold text-slate-900">
                 {currentStatus === "finished" ? "Final Ranking" : "Live Ranking"}
               </h3>
-              {(snapshot?.players.length ?? 0) === 0 ? (
+              {(snapshot?.playerCount ?? snapshot?.players.length ?? 0) === 0 ? (
                 <p className="text-sm font-semibold text-slate-500">No players joined yet.</p>
               ) : (
                 <div className="space-y-2">

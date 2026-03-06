@@ -72,6 +72,7 @@ export interface RoomSnapshot {
   >;
   quizTitle: string;
   totalQuestions: number;
+  playerCount: number;
   players: Array<Pick<RoomPlayer, "id" | "display_name" | "guest_id" | "joined_at" | "total_score">>;
   currentQuestion: CurrentQuestionPayload | null;
   currentQuestionAnswerCount: number;

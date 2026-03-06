@@ -13,9 +13,13 @@ export function useRoomRealtime({ roomCode, playerId }: UseRoomRealtimeOptions) 
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const roomIdRef = useRef<string | null>(null);
+  const [realtimeHealthy, setRealtimeHealthy] = useState(true);
+  const lastRefreshAtRef = useRef(0);
+  const refreshPromiseRef = useRef<Promise<void> | null>(null);
+  const queuedRefreshRef = useRef(false);
+  const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const refresh = useCallback(async () => {
+  const runRefresh = useCallback(async () => {
     if (!roomCode) return;
     const query = playerId ? `?playerId=${encodeURIComponent(playerId)}` : "";
     const response = await fetch(`/api/rooms/${roomCode}/state${query}`, {
@@ -25,22 +29,59 @@ export function useRoomRealtime({ roomCode, playerId }: UseRoomRealtimeOptions) 
     if (!response.ok || !payload.ok || !payload.data) {
       throw new Error(payload.message || "Failed to load room snapshot");
     }
-    roomIdRef.current = payload.data.room.id;
     setSnapshot(payload.data);
     setError(null);
   }, [playerId, roomCode]);
+
+  const refresh = useCallback(
+    async (mode: "immediate" | "throttled" = "immediate") => {
+      if (!roomCode) return;
+
+      const minDelayMs = mode === "throttled" ? 800 : 0;
+      const elapsedMs = Date.now() - lastRefreshAtRef.current;
+
+      if (mode === "throttled" && elapsedMs < minDelayMs) {
+        if (throttleTimerRef.current) return;
+        throttleTimerRef.current = setTimeout(() => {
+          throttleTimerRef.current = null;
+          refresh("throttled").catch(() => undefined);
+        }, minDelayMs - elapsedMs);
+        return;
+      }
+
+      if (refreshPromiseRef.current) {
+        queuedRefreshRef.current = true;
+        return refreshPromiseRef.current;
+      }
+
+      const task = runRefresh()
+        .finally(() => {
+          lastRefreshAtRef.current = Date.now();
+          refreshPromiseRef.current = null;
+          if (queuedRefreshRef.current) {
+            queuedRefreshRef.current = false;
+            refresh("throttled").catch(() => undefined);
+          }
+        });
+
+      refreshPromiseRef.current = task;
+      return task;
+    },
+    [roomCode, runRefresh]
+  );
 
   useEffect(() => {
     if (!roomCode) {
       setLoading(false);
       setSnapshot(null);
       setError(null);
+      setRealtimeHealthy(true);
       return;
     }
 
     let mounted = true;
     setLoading(true);
-    refresh()
+    refresh("immediate")
       .catch((err) => {
         if (mounted) {
           setError(err instanceof Error ? err.message : "Failed to load room.");
@@ -57,7 +98,7 @@ export function useRoomRealtime({ roomCode, playerId }: UseRoomRealtimeOptions) 
   }, [refresh]);
 
   useEffect(() => {
-    if (!roomCode) return;
+    if (!roomCode || !snapshot?.room.id) return;
 
     let supabase: ReturnType<typeof getSupabaseBrowserClient>;
     try {
@@ -67,54 +108,63 @@ export function useRoomRealtime({ roomCode, playerId }: UseRoomRealtimeOptions) 
       return;
     }
 
+    const activeRoomId = snapshot.room.id;
     const channel = supabase
       .channel(`room-watch-${roomCode}-${playerId ?? "anon"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rooms", filter: `room_code=eq.${roomCode}` },
         () => {
-          refresh().catch(() => undefined);
+          refresh("throttled").catch(() => undefined);
         }
       )
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_players" }, (payload: any) => {
-        const roomId = roomIdRef.current;
-        const newRoomId = payload.new?.room_id as string | undefined;
-        const oldRoomId = payload.old?.room_id as string | undefined;
-        if (!roomId || newRoomId === roomId || oldRoomId === roomId) {
-          refresh().catch(() => undefined);
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "room_players", filter: `room_id=eq.${activeRoomId}` },
+        () => {
+          refresh("throttled").catch(() => undefined);
         }
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_answers" }, (payload: any) => {
-        const roomId = roomIdRef.current;
-        const newRoomId = payload.new?.room_id as string | undefined;
-        const oldRoomId = payload.old?.room_id as string | undefined;
-        if (!roomId || newRoomId === roomId || oldRoomId === roomId) {
-          refresh().catch(() => undefined);
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "room_answers", filter: `room_id=eq.${activeRoomId}` },
+        () => {
+          refresh("throttled").catch(() => undefined);
         }
-      })
+      )
       .subscribe((status) => {
         if (status === "CHANNEL_ERROR") {
           setError("Realtime disconnected. Syncing with fallback polling...");
+          setRealtimeHealthy(false);
         } else if (status === "SUBSCRIBED") {
           setError(null);
+          setRealtimeHealthy(true);
         }
       });
 
     return () => {
       supabase.removeChannel(channel).catch(() => undefined);
     };
-  }, [playerId, refresh, roomCode]);
+  }, [playerId, refresh, roomCode, snapshot?.room.id]);
 
   useEffect(() => {
     if (!roomCode) return;
 
-    // Fallback sync when websocket/realtime is unavailable.
     const interval = setInterval(() => {
-      refresh().catch(() => undefined);
-    }, 2000);
+      refresh("immediate").catch(() => undefined);
+    }, realtimeHealthy ? 15000 : 4000);
 
     return () => clearInterval(interval);
-  }, [refresh, roomCode]);
+  }, [realtimeHealthy, refresh, roomCode]);
+
+  useEffect(() => {
+    return () => {
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
+        throttleTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     snapshot,

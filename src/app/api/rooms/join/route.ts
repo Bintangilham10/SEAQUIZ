@@ -28,10 +28,6 @@ export async function POST(request: NextRequest) {
     return fail(`Room ${roomCode} not found in active database.`, 404);
   }
 
-  if (room.status === "finished") {
-    return fail("Room has finished.");
-  }
-
   const { data: existingPlayer } = await supabase
     .from("room_players")
     .select("id, room_id, display_name, guest_id, joined_at, total_score")
@@ -43,13 +39,12 @@ export async function POST(request: NextRequest) {
     return ok("Already joined this room", { player: existingPlayer });
   }
 
-  const { count: playersCount } = await supabase
-    .from("room_players")
-    .select("*", { count: "exact", head: true })
-    .eq("room_id", room.id);
+  if (room.status === "finished") {
+    return fail("Room has finished.");
+  }
 
-  if ((playersCount ?? 0) >= MAX_ROOM_PLAYERS) {
-    return fail("Room is full. Maximum 50 players reached.");
+  if (room.status !== "lobby") {
+    return fail("Join window is closed. Game already started.", 409);
   }
 
   const { data: player, error: playerError } = await supabase
@@ -66,6 +61,28 @@ export async function POST(request: NextRequest) {
     const reason = [playerError?.message, playerError?.details, playerError?.hint]
       .filter((value) => Boolean(value))
       .join(" | ");
+
+    if (reason.includes("ROOM_FULL")) {
+      return fail(`Room is full. Maximum ${MAX_ROOM_PLAYERS} players reached.`, 409);
+    }
+
+    if (reason.includes("ROOM_JOIN_CLOSED")) {
+      return fail("Join window is closed. Game already started.", 409);
+    }
+
+    if (reason.includes("duplicate key value violates unique constraint")) {
+      const { data: duplicatePlayer } = await supabase
+        .from("room_players")
+        .select("id, room_id, display_name, guest_id, joined_at, total_score")
+        .eq("room_id", room.id)
+        .eq("guest_id", guestId)
+        .maybeSingle();
+
+      if (duplicatePlayer) {
+        return ok("Already joined this room", { player: duplicatePlayer });
+      }
+    }
+
     return fail(`Failed to join room. ${reason || "Unknown database error."}`, 500);
   }
 
